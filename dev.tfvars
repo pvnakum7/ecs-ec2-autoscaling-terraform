@@ -4,12 +4,12 @@ variable "region" {
 }
  variable "accountid" {
   type        = string
-  default     = "918135752127"
+  default     = "aws account id"
  }
 
 provider "aws" {
-  access_key = ""
-  secret_key = ""
+  # access_key = ""
+  # secret_key = ""
   region     = "${var.region}"
 }
 variable "s3bucketname"{
