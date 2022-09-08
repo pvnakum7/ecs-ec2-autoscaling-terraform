@@ -1,93 +1,75 @@
-
-
-module "db" {
+module "rds" {
   source  = "terraform-aws-modules/rds/aws"
   version = "5.0.3"
   identifier = "db-${var.service_name}-${var.env}"
 
-  engine            = "mysql"
-  engine_version    = "8.0.28"
-  instance_class    = "db.t3.micro"
-  allocated_storage = 10
+  engine               = "mysql"
+  engine_version       = "8.0.27"
+  major_engine_version = "8.0"      # DB option group
+  instance_class       = var.db_instancetype
+
+  allocated_storage     = 20
+  max_allocated_storage = 100
 
   db_name  = var.db_name
   username = var.username
   port     = var.db_port
-
-  iam_database_authentication_enabled = true
-
-  vpc_security_group_ids = [module.security_group.id]
-#   ,"${aws_security_group.rds.id}"]
-
-  maintenance_window = "Mon:00:00-Mon:03:00"
-  backup_window      = "03:00-06:00"
-
-  # Enhanced Monitoring - see example for details on how to create the role
-  # by yourself, in case you don't want to create it automatically
-  monitoring_interval = "60"
-  monitoring_role_name = "RDS-${var.service_name}-Monitoring-Role"
-  create_monitoring_role = true
-
-#   tags = {
-#     Owner       = "user"
-#     Environment = "dev"
-#   }
-  tags = local.tags
-
+  password = var.password
+  
+  # Database Deletion Protection
+  deletion_protection = false
+  multi_az               = false
+  # DB parameter group
+  family               = "mysql8.0" # DB parameter group
   # DB subnet group
   create_db_subnet_group = true
-  subnet_ids             = module.vpc.private_subnets
-#   ["subnet-12345678", "subnet-87654321"]
+  subnet_ids             = module.vpc.private_subnets       
+  vpc_security_group_ids = [module.security_group.security_group_id]
 
-  # DB parameter group
-  family = "mysql8.0"
+  maintenance_window              = "Mon:00:00-Mon:03:00"
+  backup_window                   = "03:00-06:00"
+  enabled_cloudwatch_logs_exports = ["general"]
+  create_cloudwatch_log_group     = true
 
-  # DB option group
-  major_engine_version = "8.0"
+  backup_retention_period = 0
+  skip_final_snapshot     = true
 
-  # Database Deletion Protection
-  deletion_protection = true
-  multi_az               = false
-
-  performance_insights_enabled          = true
-  performance_insights_retention_period = 7
+  # performance_insights_enabled          = true
+  # performance_insights_retention_period = 7
+  create_monitoring_role                = true
+  monitoring_interval                   = 60
 
   parameters = [
     {
-      name = "character_set_client"
+      name  = "character_set_client"
       value = "utf8mb4"
     },
     {
-      name = "character_set_server"
+      name  = "character_set_server"
       value = "utf8mb4"
     }
   ]
 
-  options = [
-    {
-      option_name = "MARIADB_AUDIT_PLUGIN"
-
-      option_settings = [
-        {
-          name  = "SERVER_AUDIT_EVENTS"
-          value = "CONNECT"
-        },
-        {
-          name  = "SERVER_AUDIT_FILE_ROTATIONS"
-          value = "37"
-        },
-      ]
-    },
-  ]
+  tags = local.tags
+  db_instance_tags = {
+    "Sensitive" = "high"
+  }
+  db_option_group_tags = {
+    "Sensitive" = "low"
+  }
+  db_parameter_group_tags = {
+    "Sensitive" = "low"
+  }
+  db_subnet_group_tags = {
+    "Sensitive" = "high"
+  }
 }
-
-
 
 module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
 
-  name        = "sg-${var.service_name}-${var.env}-RDS"
+  name        = "sg_${var.service_name}_${var.env}_RDS"
   description = "Complete MySQL example security group"
   vpc_id      = module.vpc.vpc_id
 
@@ -97,8 +79,8 @@ module "security_group" {
       from_port   = 3306
       to_port     = 3306
       protocol    = "tcp"
-      description = "MySQL access VPC"
-      cidr_blocks = module.vpc.vpc_cidr
+      description = "MySQL access from within VPC"
+      cidr_blocks = module.vpc.vpc_cidr_block
     },
   ]
 
