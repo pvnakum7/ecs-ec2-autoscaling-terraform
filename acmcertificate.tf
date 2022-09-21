@@ -1,14 +1,23 @@
+data "aws_route53_zone" "zone_2lc" {
+  name = var.domain_name
+}
+
+
 provider "aws" {
   alias = "route53"
+  profile = "2lc"
+  region = var.region
 }
 provider "aws" {
   alias = "acm"
+  profile = "2lc"
+  region = var.region
 }
 
 
 module "acm" {
   source = "terraform-aws-modules/acm/aws"
-  version = "~> 4.0"
+  version = "~> 4.1.0"
   providers = {
     aws = aws.acm
   }
@@ -34,7 +43,7 @@ module "acm_only" {
   # providers = {
   #   aws = aws.acm
   # }
-
+  zone_id               = data.aws_route53_zone.zone_2lc.id
   domain_name = var.domain_name
   subject_alternative_names = [
     "*.alerts.${var.domain_name}"
@@ -56,8 +65,10 @@ module "route53_records_only" {
   create_certificate          = false
   create_route53_records_only = true
 
-  zone_id               = "${var.zone_id}"
+  zone_id               = data.aws_route53_zone.zone_2lc.id
   distinct_domain_names = module.acm_only.distinct_domain_names
 
   acm_certificate_domain_validation_options = module.acm_only.acm_certificate_domain_validation_options
 }
+
+

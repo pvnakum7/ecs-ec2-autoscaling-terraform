@@ -1,22 +1,37 @@
 resource "aws_security_group" "ecs_sg" {
     vpc_id      = module.vpc.vpc_id
+    name = "SG-EC2-${var.service_name}-${var.env}-ECS"
     ingress {
         from_port       = 22
         to_port         = 22
         protocol        = "tcp"
-        cidr_blocks     = ["0.0.0.0/0"]
+        cidr_blocks     = ["0.0.0.0/0","${var.vpc_cidr}"]
     }
     ingress {
         from_port       = 80
         to_port         = 80
         protocol        = "tcp"
-        cidr_blocks     = ["0.0.0.0/0"]
+        cidr_blocks     = ["0.0.0.0/0","${var.vpc_cidr}"]
     }
     ingress {
         from_port       = 443
         to_port         = 443
         protocol        = "tcp"
-        cidr_blocks     = ["0.0.0.0/0"]
+        cidr_blocks     = ["0.0.0.0/0","${var.vpc_cidr}"]
+    }
+    ingress {
+      description = "EFS mount target"
+      from_port   = 2049
+      to_port     = 2049
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress {
+      description = "All from VPC"
+      from_port   = 0
+      to_port     = 65535
+      protocol    = "tcp"
+      cidr_blocks = [var.vpc_cidr]
     }
 
     egress {
@@ -26,19 +41,27 @@ resource "aws_security_group" "ecs_sg" {
         cidr_blocks     = ["0.0.0.0/0"]
     }
     tags = {
-    Name = "${var.env}-${var.service_name}-SG-EC2"
+    Name = "SG-EC2-${var.service_name}-${var.env}"
   }
 }
 
 resource "aws_security_group" "rds_sg" {
     vpc_id      = module.vpc.vpc_id
+    name = "SG-RDS-${var.service_name}-${var.env}-ECS"
 
     ingress {
         protocol        = "tcp"
         from_port       = 3306
         to_port         = 3306
-        cidr_blocks     = ["0.0.0.0/0"]
+        cidr_blocks     = ["0.0.0.0/0","${var.vpc_cidr}"]
         security_groups = [aws_security_group.ecs_sg.id]
+    }
+    ingress {
+      description = "All from VPC"
+      from_port   = 0
+      to_port     = 65535
+      protocol    = "tcp"
+      cidr_blocks = [var.vpc_cidr]
     }
 
     egress {
@@ -48,12 +71,12 @@ resource "aws_security_group" "rds_sg" {
         cidr_blocks     = ["0.0.0.0/0"]
     }
       tags = {
-    Name = "${var.env}-${var.service_name}-SG-RDS"
+    Name = "SG-RDS-${var.service_name}-${var.env}"
   }
 }
 ## ALB security groups
 resource "aws_security_group" "alb_sg" {
-  name        = "sg_alb_${var.service_name}"
+  name        = "sg_alb_${var.service_name}-${var.env}"
   description = "Allow TLS inbound traffic"
   vpc_id      = module.vpc.vpc_id
 
@@ -62,7 +85,7 @@ resource "aws_security_group" "alb_sg" {
     from_port        = 443
     to_port          = 443
     protocol         = "tcp"
-    cidr_blocks      = ["${var.vpc_cidr}","${aws_security_group.ecs_sg.id}","${aws_security_group.rds_sg.id}"] 
+    cidr_blocks      = ["0.0.0.0/0","${var.vpc_cidr}"] 
    
   }
   ingress {
@@ -70,9 +93,15 @@ resource "aws_security_group" "alb_sg" {
     from_port        = 80
     to_port          = 80
     protocol         = "tcp"
-    cidr_blocks      = ["${var.vpc_cidr}","${aws_security_group.ecs_sg.id}","${aws_security_group.rds_sg.id}"] 
-   
+    cidr_blocks      = ["0.0.0.0/0","${var.vpc_cidr}"] 
   }
+  ingress {
+      description = "All from VPC"
+      from_port   = 0
+      to_port     = 65535
+      protocol    = "tcp"
+      cidr_blocks = [var.vpc_cidr]
+    }
   egress {
     from_port        = 0
     to_port          = 0
@@ -81,7 +110,7 @@ resource "aws_security_group" "alb_sg" {
   }
 
   tags = {
-    Name = "allow_tls"
+    Name = "sg_alb_${var.service_name}-${var.env}"
   }
 }
 

@@ -1,0 +1,17 @@
+[{
+        "essential": true,
+        "memory": 512,
+        "name": "frontend",
+        "cpu": 10,
+        "image": "${REPOSITORY_URL}:latest",
+        "environment": []
+    },
+    {
+        "essential": true,
+        "memory": "",
+        "name": "worker",
+        "cpu": "",
+        "image": "${REPOSITORY_URL}:latest",
+        "environment": []
+    }
+]

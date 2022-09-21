@@ -11,6 +11,13 @@ module "vpc" {
   private_subnets = var.private_subnet
   public_subnets  = var.public_subnet
 
+  default_vpc_enable_dns_hostnames = true
+  default_vpc_enable_dns_support   = true
+
+
+  enable_dns_hostnames = true
+  enable_dns_support  = true
+
   enable_nat_gateway = true
   #enable_vpn_gateway = true
   create_igw  = true

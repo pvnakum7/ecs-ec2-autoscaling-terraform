@@ -1,134 +1,97 @@
-data "aws_ami" "amazon2" {
-  most_recent = true
-  owners = ["amazon"]
-  filter {
-    name = "name"
-    values = ["amzn2-ami-*-hvm-*-arm64-gp2"]
-  }
-  filter {
-    name = "architecture"
-    values = ["arm64"]
-  }
-}
+##  ### Ref:  https://registry.terraform.io/modules/terraform-aws-modules/ecs/aws/latest
+
 
 module "ecs" {
-  source = "terraform-aws-modules/ecs/aws"
+  source  = "terraform-aws-modules/ecs/aws"
+  version = "4.1.1"
 
-  cluster_name = "ecs-ec2"
-
+  cluster_name = "ecs-${local.name}-${var.env}" 
   cluster_configuration = {
     execute_command_configuration = {
       logging = "OVERRIDE"
       log_configuration = {
-        cloud_watch_log_group_name = "/aws/ecs/aws-ec2"
+        cloud_watch_log_group_name = "ECS_${local.name}_Logs"
       }
     }
   }
+  #  autoscaling_capacity_providers = [aws_ecs_cluster_capacity_providers.first_provider.name]
+  # ########Capacity provider - autoscaling groups
+  # default_capacity_provider_strategy {
+	# capacity_provider = aws_ecs_capacity_provider.first_provider.name
+	#   weight = 3
+	#   base = 0
+  # }
 
   autoscaling_capacity_providers = {
     one = {
-      auto_scaling_group_arn         = module.asg.auto_scaling_group_arn
-    #   "arn:aws:autoscaling:eu-west-1:012345678901:autoScalingGroup:08419a61:autoScalingGroupName/ecs-ec2-one-20220603194933774300000011"
-      managed_termination_protection = "ENABLED"
+      auto_scaling_group_arn         = module.autoscaling["one"].autoscaling_group_arn
+      # auto_scaling_group_arn         = module.autoscaling.autoscaling_group_arn
+      # managed_termination_protection = "ENABLED"
 
       managed_scaling = {
-        maximum_scaling_step_size = 5
-        minimum_scaling_step_size = 1
+        maximum_scaling_step_size = 1   
+        minimum_scaling_step_size = 1   
+        
         status                    = "ENABLED"
-        target_capacity           = 60
+        target_capacity           = 100    ## 90
       }
 
       default_capacity_provider_strategy = {
-        weight = 60
-        base   = 20
+        # capacity_provider = "one"
+        capacity_provider = aws_ecs_capacity_provider.first_provider.name
+        base   = 3
+        weight = 1
       }
     }
-    # two = {
-    #   auto_scaling_group_arn         = module.autoscaling.auto_scaling_group_arn
-    # #   "arn:aws:autoscaling:eu-west-1:012345678901:autoScalingGroup:08419a61:autoScalingGroupName/ecs-ec2-two-20220603194933774300000022"
-    #   managed_termination_protection = "ENABLED"
+  #   # two = {
+  #   #   auto_scaling_group_arn         = module.autoscaling["two"].autoscaling_group_arn
+  #   #   managed_termination_protection = "DISABLED"
 
-    #   managed_scaling = {
-    #     maximum_scaling_step_size = 15
-    #     minimum_scaling_step_size = 5
-    #     status                    = "ENABLED"
-    #     target_capacity           = 90
-    #   }
+  #   #   managed_scaling = {
+  #   #     maximum_scaling_step_size = 0
+  #   #     minimum_scaling_step_size = 0
+  #   #     status                    = "ENABLED"
+  #   #     target_capacity           = 90
+  #   #   }
 
-    #   default_capacity_provider_strategy = {
-    #     weight = 40
-    #   }
-    # }
-  }
-
-  tags = {
-    Environment = var.env
-    Project     = "ECS-${var.service_name}"
-    Name        = var.service_name
-
-  }
-}
-# module "hello_world" {
-#   source = "./service-hello-world"
-
-#   cluster_id = module.ecs.cluster_id
-# }
-# data "aws_ssm_parameter" "ecs_optimized_ami" {
-#   name = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended"
-# }
-
-# module "autoscaling" {
-#   source  = "terraform-aws-modules/autoscaling/aws"
-#   version = "~> 6.5"
-
-#   for_each = {
-#     one = {
-#       instance_type = "t3.micro"
-#     }
-#     two = {
-#       instance_type = "t3.small"
-#     }
-#   }
-
-#   name = "ecs-${var.service_name}-${each.key}"
-
-#   image_id      = data.aws_ami.amazon2
-#   #  jsondecode(data.aws_ssm_parameter.ecs_optimized_ami.value)["image_id"]
-#   instance_type = each.value.instance_type
-
-#   security_groups                 = ["${aws_security_group.ecs_sg.id}"]
-#   user_data                       = base64encode(local.user_data)
-#   ignore_desired_capacity_changes = true
-
-#   create_iam_instance_profile = true
-#   iam_role_name               = "${var.service_name}-ecs-role"
-#   iam_role_description        = "ECS role for ${var.service_name} EC2"
-#   iam_role_policies = {
-#     AmazonEC2ContainerServiceforEC2Role = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-#     AmazonSSMManagedInstanceCore        = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-#     AmazonS3FullAccess                  = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-#   }
-
-#   vpc_zone_identifier = module.vpc.private_subnets
-#   health_check_type   = "EC2"
-#   min_size            = 1
-#   max_size            = 2
-#   desired_capacity    = 1
-
-#   # https://github.com/hashicorp/terraform-provider-aws/issues/12582
-#   autoscaling_group_tags = {
-#     AmazonECSManaged = true
-#   }
-
-#   # Required for  managed_termination_protection = "ENABLED"
-#   protect_from_scale_in = true
-
-#   tags = local.tags
-# }
-
-resource "aws_cloudwatch_log_group" "this" {
-  name              = "/aws/ecs/${var.service_name}"
-  retention_in_days = 7
+  #   #   default_capacity_provider_strategy = {
+  #   #     base   = 0
+  #   #     weight = 1
+  #   #   }
+  #   # }
+   }
 
   tags = local.tags
+}
+
+
+
+resource "aws_ecs_cluster_capacity_providers" "one" {
+  cluster_name = module.ecs.cluster_name
+
+  capacity_providers = [aws_ecs_capacity_provider.first_provider.name]
+  
+  default_capacity_provider_strategy {
+    base              = 3
+    weight            = 1
+    capacity_provider = aws_ecs_capacity_provider.first_provider.name
+  }
+}
+
+resource "aws_ecs_capacity_provider" "first_provider" {
+  name = "one"
+  
+  auto_scaling_group_provider {
+    auto_scaling_group_arn = module.autoscaling["one"].autoscaling_group_arn
+    # auto_scaling_group_arn = [module.autoscaling.arn]
+    managed_termination_protection = "DISABLED"
+    managed_scaling  {
+        instance_warmup_period    = 80
+        maximum_scaling_step_size = 5
+        minimum_scaling_step_size = 1
+        status                    = "ENABLED"
+        target_capacity           = 100
+      }
+  
+  }
 }
