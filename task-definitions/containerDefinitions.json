@@ -1,0 +1,33 @@
+{
+    "name": "nginx",
+    "image": "918135752127.dkr.ecr.us-east-1.amazonaws.com/helloword:latest",
+    "cpu": "",
+    "memoryReservation": "",
+    "portMappings": [{
+        "containerPort": "80",
+        "hostPort": "0"
+    }],
+    "essential": true
+
+}, {
+    "name": "nginx",
+    "image": "918135752127.dkr.ecr.us-east-1.amazonaws.com/helloword:latest",
+    "cpu": "",
+    "memoryReservation": "",
+    "portMappings": [{
+        "containerPort": "80",
+        "hostPort": "0"
+    }],
+    "essential": true
+
+}, {
+    "name": "nginx",
+    "image": "918135752127.dkr.ecr.us-east-1.amazonaws.com/helloword:latest",
+    "cpu": "",
+    "memoryReservation": "",
+    "portMappings": [{
+        "containerPort": "80",
+        "hostPort": "0"
+    }],
+    "essential": true
+}
